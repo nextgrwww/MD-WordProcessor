@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>macOS Markdown Editor</title>
+    
+    <!-- Tailwind CSS for layout utilities -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Toast UI Editor CSS -->
+    <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+    <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/theme/toastui-editor-dark.min.css" />
+    
+    <!-- html2pdf for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- Lucide Icons (MacOS SF Symbols alternative) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root {
+            --mac-window-bg: #ffffff;
+            --mac-titlebar-bg: linear-gradient(to bottom, #f6f6f6, #d4d4d4);
+            --mac-titlebar-border: #b1b1b1;
+            --mac-text: #4d4d4d;
+            --context-bg: #ffffff;
+            --context-hover: #f3f4f6;
+            --context-text: #374151;
+            --context-border: #e5e7eb;
+        }
+
+        .dark-theme {
+            --mac-window-bg: #1e1e1e;
+            --mac-titlebar-bg: linear-gradient(to bottom, #333333, #222222);
+            --mac-titlebar-border: #000000;
+            --mac-text: #cccccc;
+            --context-bg: #2d2d2d;
+            --context-hover: #3d3d3d;
+            --context-text: #e5e7eb;
+            --context-border: #444444;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--mac-window-bg);
+            overflow: hidden;
+            transition: background-color 0.3s ease;
+        }
+
+        .mac-window {
+            width: 100vw;
+            height: 100vh;
+            max-width: 100%;
+            background: var(--mac-window-bg);
+            border-radius: 0px;
+            box-shadow: none;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .mac-title {
+            font-size: 13px;
+            color: var(--mac-text);
+            font-weight: 500;
+            pointer-events: none;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+
+        /* Custom Toolbar Buttons */
+        .mac-toolbar-actions {
+            display: flex;
+            gap: 8px;
+            z-index: 20;
+        }
+
+        .mac-toolbar-actions button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--mac-text);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px;
+            border-radius: 6px;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .mac-toolbar-actions button:hover {
+            background: rgba(128, 128, 128, 0.15);
+        }
+        
+        .mac-toolbar-actions button:active {
+            transform: scale(0.95);
+        }
+
+        /* Context Menu Styles */
+        #custom-context-menu {
+            background-color: var(--context-bg);
+            color: var(--context-text);
+            border-color: var(--context-border);
+        }
+        
+        .context-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .context-item:hover {
+            background-color: var(--context-hover);
+        }
+
+        #editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+        }
+
+        /* TUI Overrides for seamless integration */
+        .toastui-editor-defaultUI {
+            border: none !important;
+            display: flex;
+            flex-direction: column;
+            height: 100% !important;
+            background-color: var(--mac-window-bg);
+        }
+
+        .mac-toolbar-wrapper {
+            background: var(--mac-titlebar-bg);
+            border-bottom: 1px solid var(--mac-titlebar-border);
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 52px;
+            user-select: none;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .toastui-editor-toolbar {
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            flex-wrap: nowrap !important;
+            min-height: auto !important;
+            flex: 1;
+        }
+
+        /* Aggressively force ALL of TUI's internal wrappers to be completely transparent */
+        body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar,
+        body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar div:not(.toastui-editor-toolbar-divider) {
+            background: transparent !important;
+            background-image: none !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar-group,
+        body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar-item-wrapper {
+            display: flex !important;
+            align-items: center !important;
+            height: auto !important;
+        }
+
+        /* Minimalist icon buttons */
+        body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar button {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 6px !important;
+            margin: 0 2px !important;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar button:hover {
+            background: rgba(128, 128, 128, 0.15) !important;
+        }
+
+        /* Enforce transparency and alignment for injected SVG icons */
+        body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar-icons {
+            background-image: none !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar-icons svg,
+        .mac-toolbar-actions button svg {
+            color: var(--mac-text);
+            stroke: currentColor;
+            width: 17px;
+            height: 17px;
+            pointer-events: none;
+        }
+
+        body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar .toastui-editor-toolbar-divider {
+            background-color: var(--mac-titlebar-border) !important;
+            opacity: 0.5;
+            height: 20px !important;
+            margin: 0 6px !important;
+            width: 1px !important;
+            display: inline-block !important;
+        }
+
+        .toastui-editor-mode-switch {
+            background-color: #f3f3f3 !important;
+            border-top: 1px solid #e5e5e5 !important;
+        }
+
+        .toastui-editor-mode-switch .tab-item {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+            color: #555 !important;
+        }
+
+        .toastui-editor-mode-switch .tab-item.active {
+            color: #007aff !important; /* macOS selection blue */
+            background-color: #fff !important;
+        }
+
+        .toastui-editor-contents {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+            font-size: 15px !important;
+            padding: 2rem !important;
+        }
+
+        /* Mobile responsiveness adjustments */
+        @media (max-width: 640px) {
+            .mac-window {
+                width: 95vw;
+                height: 95vh;
+            }
+            .toastui-editor-contents {
+                padding: 1rem !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Custom Context Menu -->
+    <div id="custom-context-menu" class="hidden absolute shadow-2xl rounded-lg border text-sm py-1 z-50 min-w-[160px] transition-opacity duration-200">
+        <!-- Items injected by JS -->
+    </div>
+
+    <!-- Hidden Template for macOS UI Elements -->
+    <div id="mac-ui-template" style="display: none;">
+        <div class="mac-left-ui flex items-center gap-4 mr-4 flex-shrink-0">
+            <div class="mac-title hidden md:flex items-center">
+                <svg style="display:inline; width:14px; height:14px; margin-right:4px; vertical-align:text-top; fill:currentColor;" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                Document.md
+            </div>
+        </div>
+        <div class="mac-toolbar-actions ml-4 flex-shrink-0">
+            <button onclick="toggleTheme()" title="Toggle Dark/Light Mode" id="theme-btn"><i data-lucide="moon"></i></button>
+            <button onclick="loadFile()" title="Load Markdown File"><i data-lucide="folder-open"></i></button>
+            <button onclick="saveFile()" title="Save as Markdown"><i data-lucide="save"></i></button>
+            <button onclick="savePDF()" title="Export to PDF"><i data-lucide="file-down"></i></button>
+        </div>
+    </div>
+
+    <div class="mac-window">
+        <!-- Editor Container (Title bar is now merged into Editor Toolbar) -->
+        <div id="editor-container">
+            <div id="editor"></div>
+        </div>
+    </div>
+
+    <!-- Toast UI Editor JS -->
+    <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
+    
+    <script>
+        // Fix benign ResizeObserver errors caused by TUI Editor's dynamic layout
+        // by decoupling the observer callbacks from the current animation frame
+        const OriginalResizeObserver = window.ResizeObserver;
+        window.ResizeObserver = class ResizeObserver extends OriginalResizeObserver {
+            constructor(callback) {
+                super((entries, observer) => {
+                    window.requestAnimationFrame(() => {
+                        if (!Array.isArray(entries) || !entries.length) return;
+                        try {
+                            callback(entries, observer);
+                        } catch (e) {
+                            // Suppress internal resize callback errors
+                        }
+                    });
+                });
+            }
+        };
+
+        // Fallback to safely catch any stray errors that bubble up to the window
+        window.addEventListener('error', e => {
+            if (e.message && e.message.includes('ResizeObserver')) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+            }
+        }, { capture: true });
+
+        const initialContent = `
+# Welcome to macOS Markdown 📝
+
+This is a beautiful, macOS Catalina-inspired Markdown editor. It seamlessly blends standard word processing tools with raw Markdown.
+
+## Features Included:
+* **WYSIWYG Mode:** Edit your document like a standard word processor. Use the toolbar above!
+* **Markdown Mode:** Click the toggle at the bottom to switch to raw code view.
+* **Media Support:** Easily embed images and links.
+* **Catalina UI Kit:** Clean, frosted, and native-feeling window decorations.
+
+> "Design is not just what it looks like and feels like. Design is how it works." 
+> — *Steve Jobs*
+
+---
+
+### Try it yourself!
+Highlight this text to make it bold, or add a table using the menu bar above.
+`;
+
+        // Initialize the Toast UI Editor
+        const editor = new toastui.Editor({
+            el: document.querySelector('#editor'),
+            height: '100%',
+            initialEditType: 'wysiwyg', // Start in word-editor mode
+            previewStyle: 'vertical',
+            initialValue: initialContent.trim(),
+            useCommandShortcut: true,
+            toolbarItems: [
+                ['heading', 'bold', 'italic', 'strike'],
+                ['hr', 'quote'],
+                ['ul', 'ol', 'task', 'indent', 'outdent'],
+                ['table', 'image', 'link'],
+                ['code', 'codeblock']
+            ]
+        });
+
+        // --- MERGE MACOS UI INTO EDITOR TOOLBAR ---
+        // 1. Get the generated toolbar
+        const toolbar = document.querySelector('.toastui-editor-toolbar');
+        
+        // 2. Create an outer wrapper to sit in place of the toolbar
+        const wrapper = document.createElement('div');
+        wrapper.className = 'mac-toolbar-wrapper';
+        toolbar.parentNode.insertBefore(wrapper, toolbar);
+        
+        // 3. Inject the macOS UI (Title on left, Actions on right) around the toolbar
+        const template = document.getElementById('mac-ui-template');
+        const leftUI = template.querySelector('.mac-left-ui');
+        const rightUI = template.querySelector('.mac-toolbar-actions');
+        
+        wrapper.appendChild(leftUI);
+        wrapper.appendChild(toolbar);
+        wrapper.appendChild(rightUI);
+
+        // --- INJECT MAC-STYLE ICONS ---
+        // Map TUI default classes to Lucide icons
+        const lucideIcons = {
+            'heading': 'heading',
+            'bold': 'bold',
+            'italic': 'italic',
+            'strike': 'strikethrough',
+            'hr': 'minus',
+            'quote': 'text-quote',
+            'ul': 'list',
+            'ol': 'list-ordered',
+            'task': 'list-todo',
+            'indent': 'indent',
+            'outdent': 'outdent',
+            'table': 'table',
+            'image': 'image',
+            'link': 'link',
+            'code': 'code',
+            'codeblock': 'file-code'
+        };
+
+        // Inject Lucide template tags into TUI buttons safely
+        function injectIcons() {
+            let rendered = false;
+            Object.keys(lucideIcons).forEach(key => {
+                const btns = document.querySelectorAll(`.toastui-editor-toolbar-icons.${key}`);
+                btns.forEach(btn => {
+                    if (!btn.querySelector('i') && !btn.querySelector('svg')) {
+                        btn.innerHTML = `<i data-lucide="${lucideIcons[key]}"></i>`;
+                        rendered = true;
+                    }
+                });
+            });
+            if (rendered) {
+                lucide.createIcons({ attrs: { "stroke-width": 1.5 } });
+            }
+        }
+
+        // Initial injection
+        injectIcons();
+
+        // Keep icons present when Toast UI dynamically recalculates layout (e.g. resize)
+        const toolbarObserver = new MutationObserver(() => {
+            injectIcons();
+        });
+        toolbarObserver.observe(toolbar, { childList: true, subtree: true });
+
+        // 1. Dark Mode / Light Mode Toggle
+        let isDarkMode = false;
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            const editorEl = document.querySelector('.toastui-editor-defaultUI');
+            const themeBtn = document.querySelector('#theme-btn');
+            
+            if (isDarkMode) {
+                document.body.classList.add('dark-theme');
+                editorEl.classList.add('toastui-editor-dark');
+                themeBtn.innerHTML = '<i data-lucide="sun"></i>';
+            } else {
+                document.body.classList.remove('dark-theme');
+                editorEl.classList.remove('toastui-editor-dark');
+                themeBtn.innerHTML = '<i data-lucide="moon"></i>';
+            }
+            
+            // Re-render the swapped sun/moon icon
+            lucide.createIcons({ attrs: { "stroke-width": 1.5 } });
+        }
+
+        // 2. Save / Load Files (Markdown)
+        function saveFile() {
+            const content = editor.getMarkdown();
+            const blob = new Blob([content], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'document.md';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function loadFile() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.md,text/markdown';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        editor.setMarkdown(event.target.result);
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        }
+
+        // 3. Save as PDF
+        function savePDF() {
+            const element = document.querySelector('.toastui-editor-contents');
+            const opt = {
+                margin:       1,
+                filename:     'document.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            
+            // Temporarily normalize colors for PDF export if in dark mode
+            const isDark = document.body.classList.contains('dark-theme');
+            if(isDark) document.body.classList.remove('dark-theme');
+            
+            html2pdf().set(opt).from(element).save().then(() => {
+                // Restore dark mode after export
+                if(isDark) document.body.classList.add('dark-theme');
+            });
+        }
+
+        // 4. Drag & Drop images & Custom Context Menu
+        const contextMenu = document.getElementById('custom-context-menu');
+        let currentTarget = null;
+        let pressTimer = null;
+
+        // Ensure dynamically added images are draggable for moving via drag & drop
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.addedNodes) {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeName === 'IMG') {
+                            node.setAttribute('draggable', 'true');
+                        } else if (node.querySelectorAll) {
+                            node.querySelectorAll('img').forEach(img => img.setAttribute('draggable', 'true'));
+                        }
+                    });
+                }
+            });
+        });
+        observer.observe(document.querySelector('#editor'), { childList: true, subtree: true });
+
+        // Show context menu function
+        function showContextMenu(x, y, target) {
+            currentTarget = target;
+            
+            // Adjust position for screen boundaries
+            const menuWidth = 160;
+            const menuHeight = 150;
+            const posX = x + menuWidth > window.innerWidth ? window.innerWidth - menuWidth - 10 : x;
+            const posY = y + menuHeight > window.innerHeight ? window.innerHeight - menuHeight - 10 : y;
+
+            contextMenu.style.left = posX + 'px';
+            contextMenu.style.top = posY + 'px';
+            
+            if (target.tagName === 'IMG') {
+                contextMenu.innerHTML = `
+                    <div class="context-item font-semibold border-b border-gray-200 dark:border-gray-600 mb-1" style="cursor:default">Image Options</div>
+                    <div class="context-item" onclick="execContextMenuAction('changeImage')">Change Image...</div>
+                    <div class="context-item" onclick="execContextMenuAction('alignLeft')">Align Left</div>
+                    <div class="context-item" onclick="execContextMenuAction('alignCenter')">Align Center</div>
+                    <div class="context-item text-red-500" onclick="execContextMenuAction('deleteImage')">Delete Image</div>
+                `;
+            } else {
+                contextMenu.innerHTML = `
+                    <div class="context-item font-semibold border-b border-gray-200 dark:border-gray-600 mb-1" style="cursor:default">Text Options</div>
+                    <div class="context-item" onclick="execContextMenuAction('bold')"><b>Bold</b></div>
+                    <div class="context-item" onclick="execContextMenuAction('italic')"><i>Italic</i></div>
+                    <div class="context-item" onclick="execContextMenuAction('strike')"><strike>Strikethrough</strike></div>
+                `;
+            }
+            contextMenu.classList.remove('hidden');
+        }
+
+        function hideContextMenu() {
+            contextMenu.classList.add('hidden');
+        }
+
+        window.execContextMenuAction = function(action) {
+            hideContextMenu();
+            
+            if (action === 'deleteImage' && currentTarget) {
+                currentTarget.remove();
+                // Trigger input event to sync DOM change to ToastUI state
+                const event = new Event('input', { bubbles: true });
+                document.querySelector('.toastui-editor-contents').dispatchEvent(event);
+            } else if (action === 'changeImage' && currentTarget) {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            currentTarget.src = event.target.result;
+                            const ev = new Event('input', { bubbles: true });
+                            currentTarget.dispatchEvent(ev);
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                };
+                input.click();
+            } else if (action === 'alignLeft' && currentTarget) {
+                 currentTarget.style.display = 'block';
+                 currentTarget.style.margin = '0 auto 0 0';
+            } else if (action === 'alignCenter' && currentTarget) {
+                 currentTarget.style.display = 'block';
+                 currentTarget.style.margin = '0 auto';
+            } else if (['bold', 'italic', 'strike'].includes(action)) {
+                editor.exec(action);
+            }
+        };
+
+        // Desktop Right Click Event
+        document.addEventListener('contextmenu', (e) => {
+            if (e.target.closest('.toastui-editor-contents')) {
+                e.preventDefault();
+                showContextMenu(e.pageX, e.pageY, e.target);
+            }
+        });
+
+        // Hide on outside click
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#custom-context-menu')) {
+                hideContextMenu();
+            }
+        });
+
+        // Mobile Touch (Long Press) Events
+        document.addEventListener('touchstart', (e) => {
+            if (e.target.closest('.toastui-editor-contents')) {
+                const touch = e.touches[0];
+                pressTimer = setTimeout(() => {
+                    showContextMenu(touch.pageX, touch.pageY, e.target);
+                }, 600);
+            }
+        });
+
+        document.addEventListener('touchend', () => {
+            if (pressTimer) clearTimeout(pressTimer);
+        });
+
+        document.addEventListener('touchmove', () => {
+            if (pressTimer) clearTimeout(pressTimer);
+            hideContextMenu();
+        });
+    </script>
+</body>
+</html>
