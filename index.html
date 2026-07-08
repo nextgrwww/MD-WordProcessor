@@ -155,13 +155,25 @@
         .toastui-editor-toolbar {
             background: transparent !important;
             border: none !important;
-            padding: 0 !important;
+            padding: 0 8px !important;
             display: flex !important;
             align-items: center !important;
-            justify-content: center !important;
+            justify-content: flex-start !important;
             flex-wrap: nowrap !important;
             min-height: auto !important;
             flex: 1;
+            overflow-x: auto !important;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        .toastui-editor-toolbar::-webkit-scrollbar {
+            display: none;
+        }
+        
+        /* Hide TUI More button to rely entirely on horizontal scrolling */
+        body #editor-container .toastui-editor-defaultUI button[aria-label="More"] {
+            display: none !important;
         }
 
         /* Aggressively force ALL of TUI's internal wrappers to be completely transparent */
@@ -178,6 +190,7 @@
             display: flex !important;
             align-items: center !important;
             height: auto !important;
+            flex-shrink: 0 !important;
         }
 
         /* Minimalist icon buttons */
@@ -215,6 +228,7 @@
             margin: 0 6px !important;
             width: 1px !important;
             display: inline-block !important;
+            flex-shrink: 0 !important;
         }
 
         .toastui-editor-mode-switch {
@@ -381,7 +395,9 @@ Highlight this text to make it bold, or add a table using the menu bar above.
             'Insert image': 'ph-image',
             'Insert link': 'ph-link',
             'Code': 'ph-code',
-            'Code block': 'ph-file-code'
+            'Inline code': 'ph-code',
+            'Code block': 'ph-file-code',
+            'CodeBlock': 'ph-file-code'
         };
 
         function injectCustomButtons() {
