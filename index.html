@@ -381,24 +381,109 @@ Highlight this text to make it bold, or add a table using the menu bar above.
             'Insert image': 'ph-image',
             'Insert link': 'ph-link',
             'Code': 'ph-code',
-            'Code block': 'ph-file-code',
-            'Undo': 'ph-arrow-u-up-left',
-            'Redo': 'ph-arrow-u-up-right',
-            'Cut': 'ph-scissors',
-            'Copy': 'ph-copy',
-            'Paste': 'ph-clipboard',
-            'Move Up': 'ph-arrow-up',
-            'Move Down': 'ph-arrow-down'
+            'Code block': 'ph-file-code'
         };
+
+        function injectCustomButtons() {
+            const toolbar = document.querySelector('.toastui-editor-toolbar');
+            // Prevent infinite loop from MutationObserver by checking if we already injected them
+            if (!toolbar || document.querySelector('.custom-edit-group')) return;
+
+            function createBtn(label, icon, onClick) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'toastui-editor-toolbar-icons custom-btn';
+                btn.setAttribute('aria-label', label);
+                btn.title = label; // Tooltip for custom buttons
+                btn.innerHTML = `<i class="ph ${icon}"></i>`;
+                btn.addEventListener('click', onClick);
+                return btn;
+            }
+            
+            function createDivider() {
+                const div = document.createElement('div');
+                div.className = 'toastui-editor-toolbar-divider';
+                return div;
+            }
+
+            // Clipboard & History Group
+            const editGroup = document.createElement('div');
+            editGroup.className = 'toastui-editor-toolbar-group custom-edit-group';
+            editGroup.appendChild(createBtn('Undo', 'ph-arrow-u-up-left', () => document.execCommand('undo')));
+            editGroup.appendChild(createBtn('Redo', 'ph-arrow-u-up-right', () => document.execCommand('redo')));
+            editGroup.appendChild(createDivider());
+            editGroup.appendChild(createBtn('Cut', 'ph-scissors', () => document.execCommand('cut')));
+            editGroup.appendChild(createBtn('Copy', 'ph-copy', () => document.execCommand('copy')));
+            editGroup.appendChild(createBtn('Paste', 'ph-clipboard', async () => {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    editor.insertText(text);
+                } catch (e) {
+                    document.execCommand('paste');
+                }
+            }));
+
+            // Line Manipulation Group
+            const moveGroup = document.createElement('div');
+            moveGroup.className = 'toastui-editor-toolbar-group custom-move-group';
+            moveGroup.appendChild(createBtn('Move Up', 'ph-arrow-up', moveUp));
+            moveGroup.appendChild(createBtn('Move Down', 'ph-arrow-down', moveDown));
+
+            toolbar.appendChild(createDivider());
+            toolbar.appendChild(editGroup);
+            toolbar.appendChild(createDivider());
+            toolbar.appendChild(moveGroup);
+        }
+
+        // Helper to find the topmost block element (p, li, h1, etc.) inside the editor container
+        function getClosestBlockNode(node) {
+            if (!node) return null;
+            if (node.nodeType === 3) node = node.parentNode; // Get element if text node
+            while (node && node.parentNode) {
+                // TUI Editor wraps content in a container with class .ProseMirror
+                if (node.parentNode.classList && node.parentNode.classList.contains('ProseMirror')) {
+                    return node;
+                }
+                node = node.parentNode;
+            }
+            return null;
+        }
+
+        // Shifting algorithms
+        function moveUp() {
+            const sel = window.getSelection();
+            if (!sel.rangeCount) return;
+            const block = getClosestBlockNode(sel.anchorNode);
+            if (block && block.previousElementSibling) {
+                block.parentNode.insertBefore(block, block.previousElementSibling);
+                block.parentNode.dispatchEvent(new Event('input', { bubbles: true })); // Sync TUI state
+            }
+        }
+
+        function moveDown() {
+            const sel = window.getSelection();
+            if (!sel.rangeCount) return;
+            const block = getClosestBlockNode(sel.anchorNode);
+            if (block && block.nextElementSibling) {
+                block.parentNode.insertBefore(block.nextElementSibling, block);
+                block.parentNode.dispatchEvent(new Event('input', { bubbles: true })); // Sync TUI state
+            }
+        }
 
         function injectPhosphorIcons() {
             Object.keys(phosphorIcons).forEach(label => {
                 // Find button by its aria-label, which is always consistent in TUI
                 const btn = document.querySelector(`button[aria-label="${label}"]`);
-                if (btn && !btn.querySelector('.ph')) {
-                    btn.innerHTML = `<i class="ph ${phosphorIcons[label]}"></i>`;
+                if (btn) {
+                    if (!btn.querySelector('.ph')) {
+                        btn.innerHTML = `<i class="ph ${phosphorIcons[label]}"></i>`;
+                    }
+                    btn.title = label; // Apply tooltips to default buttons
                 }
             });
+            
+            // Inject custom advanced buttons alongside defaults
+            injectCustomButtons();
         }
 
         // Initial injection
