@@ -77,7 +77,6 @@
             white-space: nowrap;
         }
 
-        /* Custom Toolbar Buttons */
         .mac-toolbar-actions {
             display: flex;
             gap: 8px;
@@ -106,7 +105,6 @@
             transform: scale(0.95);
         }
 
-        /* Context Menu Styles */
         #custom-context-menu {
             background-color: var(--context-bg);
             color: var(--context-text);
@@ -130,7 +128,6 @@
             background: #fff;
         }
 
-        /* TUI Overrides for seamless integration */
         .toastui-editor-defaultUI {
             border: none !important;
             display: flex;
@@ -171,12 +168,10 @@
             display: none;
         }
         
-        /* Hide TUI More button to rely entirely on horizontal scrolling */
         body #editor-container .toastui-editor-defaultUI button[aria-label="More"] {
             display: none !important;
         }
 
-        /* Aggressively force ALL of TUI's internal wrappers to be completely transparent */
         body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar,
         body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar div:not(.toastui-editor-toolbar-divider) {
             background: transparent !important;
@@ -193,7 +188,6 @@
             flex-shrink: 0 !important;
         }
 
-        /* Minimalist icon buttons */
         body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar button {
             background: transparent !important;
             border: none !important;
@@ -203,7 +197,6 @@
             transition: background 0.2s, transform 0.1s;
         }
 
-        /* Enforce transparency and alignment for injected Phosphor icons */
         body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar button.toastui-editor-toolbar-icons {
             background-image: none !important;
             display: flex !important;
@@ -212,7 +205,6 @@
         }
 
         .ph {
-            pointer-events: none; /* Let clicks pass through to the button */
             font-size: 18px;
             color: var(--mac-text);
         }
@@ -231,46 +223,17 @@
             flex-shrink: 0 !important;
         }
 
-        .toastui-editor-mode-switch {
-            background-color: #f3f3f3 !important;
-            border-top: 1px solid #e5e5e5 !important;
-        }
-
-        .toastui-editor-mode-switch .tab-item {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-            color: #555 !important;
-        }
-
-        .toastui-editor-mode-switch .tab-item.active {
-            color: #007aff !important; /* macOS selection blue */
-            background-color: #fff !important;
-        }
-
         .toastui-editor-contents {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
             font-size: 15px !important;
             padding: 2rem !important;
         }
-
-        /* Mobile responsiveness adjustments */
-        @media (max-width: 640px) {
-            .mac-window {
-                width: 95vw;
-                height: 95vh;
-            }
-            .toastui-editor-contents {
-                padding: 1rem !important;
-        }
     </style>
 </head>
 <body>
 
-    <!-- Custom Context Menu -->
-    <div id="custom-context-menu" class="hidden absolute shadow-2xl rounded-lg border text-sm py-1 z-50 min-w-[160px] transition-opacity duration-200">
-        <!-- Items injected by JS -->
-    </div>
+    <div id="custom-context-menu" class="hidden absolute shadow-2xl rounded-lg border text-sm py-1 z-50 min-w-[160px] transition-opacity duration-200"></div>
 
-    <!-- Hidden Template for macOS UI Elements -->
     <div id="mac-ui-template" style="display: none;">
         <div class="mac-left-ui flex items-center gap-4 mr-4 flex-shrink-0">
             <div class="mac-title hidden md:flex items-center">
@@ -286,69 +249,20 @@
     </div>
 
     <div class="mac-window">
-        <!-- Editor Container (Title bar is now merged into Editor Toolbar) -->
         <div id="editor-container">
             <div id="editor"></div>
         </div>
     </div>
 
-    <!-- Toast UI Editor JS -->
     <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
     
     <script>
-        // Fix benign ResizeObserver errors caused by TUI Editor's dynamic layout
-        // by decoupling the observer callbacks from the current animation frame
-        const OriginalResizeObserver = window.ResizeObserver;
-        window.ResizeObserver = class ResizeObserver extends OriginalResizeObserver {
-            constructor(callback) {
-                super((entries, observer) => {
-                    window.requestAnimationFrame(() => {
-                        if (!Array.isArray(entries) || !entries.length) return;
-                        try {
-                            callback(entries, observer);
-                        } catch (e) {
-                            // Suppress internal resize callback errors
-                        }
-                    });
-                });
-            }
-        };
-
-        // Fallback to safely catch any stray errors that bubble up to the window
-        window.addEventListener('error', e => {
-            if (e.message && e.message.includes('ResizeObserver')) {
-                e.stopImmediatePropagation();
-                e.preventDefault();
-            }
-        }, { capture: true });
-
-        const initialContent = `
-# Welcome to macOS Markdown 📝
-
-This is a beautiful, macOS Catalina-inspired Markdown editor. It seamlessly blends standard word processing tools with raw Markdown.
-
-## Features Included:
-* **WYSIWYG Mode:** Edit your document like a standard word processor. Use the toolbar above!
-* **Markdown Mode:** Click the toggle at the bottom to switch to raw code view.
-* **Media Support:** Easily embed images and links.
-* **Catalina UI Kit:** Clean, frosted, and native-feeling window decorations.
-
-> "Design is not just what it looks like and feels like. Design is how it works." 
-> — *Steve Jobs*
-
----
-
-### Try it yourself!
-Highlight this text to make it bold, or add a table using the menu bar above.
-`;
-
-        // Initialize the Toast UI Editor
         const editor = new toastui.Editor({
             el: document.querySelector('#editor'),
             height: '100%',
-            initialEditType: 'wysiwyg', // Start in word-editor mode
+            initialEditType: 'wysiwyg',
             previewStyle: 'vertical',
-            initialValue: initialContent.trim(),
+            initialValue: "# Welcome to macOS Markdown 📝\n\nEdit your documents with a native feel.",
             useCommandShortcut: true,
             toolbarItems: [
                 ['heading', 'bold', 'italic', 'strike'],
@@ -359,27 +273,18 @@ Highlight this text to make it bold, or add a table using the menu bar above.
             ]
         });
 
-        // --- MERGE MACOS UI INTO EDITOR TOOLBAR ---
-        // 1. Get the generated toolbar
+        // Integrate macOS Toolbar
         const toolbar = document.querySelector('.toastui-editor-toolbar');
-        
-        // 2. Create an outer wrapper to sit in place of the toolbar
         const wrapper = document.createElement('div');
         wrapper.className = 'mac-toolbar-wrapper';
         toolbar.parentNode.insertBefore(wrapper, toolbar);
-        
-        // 3. Inject the macOS UI (Title on left, Actions on right) around the toolbar
         const template = document.getElementById('mac-ui-template');
-        const leftUI = template.querySelector('.mac-left-ui');
-        const rightUI = template.querySelector('.mac-toolbar-actions');
-        
-        wrapper.appendChild(leftUI);
+        wrapper.appendChild(template.querySelector('.mac-left-ui'));
         wrapper.appendChild(toolbar);
-        wrapper.appendChild(rightUI);
+        wrapper.appendChild(template.querySelector('.mac-toolbar-actions'));
 
-        // --- INJECT PHOSPHOR ICONS ---
-        // Using robust aria-label mapping to bypass TUI's internal class obfuscation
-        const phosphorIcons = {
+        // FIX: Icon Injection
+        const iconMapping = {
             'Heading': 'ph-text-h',
             'Bold': 'ph-text-b',
             'Italic': 'ph-text-italic',
@@ -388,325 +293,60 @@ Highlight this text to make it bold, or add a table using the menu bar above.
             'Blockquote': 'ph-quotes',
             'Unordered list': 'ph-list-bullets',
             'Ordered list': 'ph-list-numbers',
-            'Task': 'ph-check-square-offset',
+            'Task': 'ph-check-square',
             'Indent': 'ph-text-indent',
             'Outdent': 'ph-text-outdent',
             'Insert table': 'ph-table',
             'Insert image': 'ph-image',
             'Insert link': 'ph-link',
             'Code': 'ph-code',
-            'Inline code': 'ph-code',
-            'Code block': 'ph-file-code',
-            'CodeBlock': 'ph-file-code'
+            'Code block': 'ph-file-code'
         };
 
-        function injectCustomButtons() {
-            const toolbar = document.querySelector('.toastui-editor-toolbar');
-            // Prevent infinite loop from MutationObserver by checking if we already injected them
-            if (!toolbar || document.querySelector('.custom-edit-group')) return;
-
-            function createBtn(label, icon, onClick) {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'toastui-editor-toolbar-icons custom-btn';
-                btn.setAttribute('aria-label', label);
-                btn.title = label; // Tooltip for custom buttons
-                btn.innerHTML = `<i class="ph ${icon}"></i>`;
-                btn.addEventListener('click', onClick);
-                return btn;
-            }
-            
-            function createDivider() {
-                const div = document.createElement('div');
-                div.className = 'toastui-editor-toolbar-divider';
-                return div;
-            }
-
-            // Clipboard & History Group
-            const editGroup = document.createElement('div');
-            editGroup.className = 'toastui-editor-toolbar-group custom-edit-group';
-            editGroup.appendChild(createBtn('Undo', 'ph-arrow-u-up-left', () => document.execCommand('undo')));
-            editGroup.appendChild(createBtn('Redo', 'ph-arrow-u-up-right', () => document.execCommand('redo')));
-            editGroup.appendChild(createDivider());
-            editGroup.appendChild(createBtn('Cut', 'ph-scissors', () => document.execCommand('cut')));
-            editGroup.appendChild(createBtn('Copy', 'ph-copy', () => document.execCommand('copy')));
-            editGroup.appendChild(createBtn('Paste', 'ph-clipboard', async () => {
-                try {
-                    const text = await navigator.clipboard.readText();
-                    editor.insertText(text);
-                } catch (e) {
-                    document.execCommand('paste');
-                }
-            }));
-
-            // Line Manipulation Group
-            const moveGroup = document.createElement('div');
-            moveGroup.className = 'toastui-editor-toolbar-group custom-move-group';
-            moveGroup.appendChild(createBtn('Move Up', 'ph-arrow-up', moveUp));
-            moveGroup.appendChild(createBtn('Move Down', 'ph-arrow-down', moveDown));
-
-            toolbar.appendChild(createDivider());
-            toolbar.appendChild(editGroup);
-            toolbar.appendChild(createDivider());
-            toolbar.appendChild(moveGroup);
-        }
-
-        // Helper to find the topmost block element (p, li, h1, etc.) inside the editor container
-        function getClosestBlockNode(node) {
-            if (!node) return null;
-            if (node.nodeType === 3) node = node.parentNode; // Get element if text node
-            while (node && node.parentNode) {
-                // TUI Editor wraps content in a container with class .ProseMirror
-                if (node.parentNode.classList && node.parentNode.classList.contains('ProseMirror')) {
-                    return node;
-                }
-                node = node.parentNode;
-            }
-            return null;
-        }
-
-        // Shifting algorithms
-        function moveUp() {
-            const sel = window.getSelection();
-            if (!sel.rangeCount) return;
-            const block = getClosestBlockNode(sel.anchorNode);
-            if (block && block.previousElementSibling) {
-                block.parentNode.insertBefore(block, block.previousElementSibling);
-                block.parentNode.dispatchEvent(new Event('input', { bubbles: true })); // Sync TUI state
-            }
-        }
-
-        function moveDown() {
-            const sel = window.getSelection();
-            if (!sel.rangeCount) return;
-            const block = getClosestBlockNode(sel.anchorNode);
-            if (block && block.nextElementSibling) {
-                block.parentNode.insertBefore(block.nextElementSibling, block);
-                block.parentNode.dispatchEvent(new Event('input', { bubbles: true })); // Sync TUI state
-            }
-        }
-
-        function injectPhosphorIcons() {
-            Object.keys(phosphorIcons).forEach(label => {
-                // Find button by its aria-label, which is always consistent in TUI
+        function injectIcons() {
+            Object.keys(iconMapping).forEach(label => {
                 const btn = document.querySelector(`button[aria-label="${label}"]`);
-                if (btn) {
-                    if (!btn.querySelector('.ph')) {
-                        btn.innerHTML = `<i class="ph ${phosphorIcons[label]}"></i>`;
-                    }
-                    btn.title = label; // Apply tooltips to default buttons
+                if (btn && !btn.querySelector('.ph')) {
+                    btn.innerHTML = `<i class="ph ${iconMapping[label]}"></i>`;
                 }
             });
-            
-            // Inject custom advanced buttons alongside defaults
-            injectCustomButtons();
         }
+        
+        injectIcons();
+        const observer = new MutationObserver(injectIcons);
+        observer.observe(toolbar, { childList: true, subtree: true });
 
-        // Initial injection
-        injectPhosphorIcons();
-
-        // Ensure custom icons persist if TUI redraws the toolbar internally
-        const toolbarObserver = new MutationObserver(() => {
-            injectPhosphorIcons();
-        });
-        toolbarObserver.observe(toolbar, { childList: true, subtree: true });
-
-        // 1. Dark Mode / Light Mode Toggle
-        let isDarkMode = false;
+        // Theme and File Logic
         function toggleTheme() {
-            isDarkMode = !isDarkMode;
+            document.body.classList.toggle('dark-theme');
             const editorEl = document.querySelector('.toastui-editor-defaultUI');
-            const themeBtn = document.querySelector('#theme-btn');
-            
-            if (isDarkMode) {
-                document.body.classList.add('dark-theme');
-                editorEl.classList.add('toastui-editor-dark');
-                themeBtn.innerHTML = '<i class="ph ph-sun"></i>';
-            } else {
-                document.body.classList.remove('dark-theme');
-                editorEl.classList.remove('toastui-editor-dark');
-                themeBtn.innerHTML = '<i class="ph ph-moon"></i>';
-            }
+            editorEl.classList.toggle('toastui-editor-dark');
+            const themeBtn = document.getElementById('theme-btn');
+            themeBtn.innerHTML = document.body.classList.contains('dark-theme') ? '<i class="ph ph-sun"></i>' : '<i class="ph ph-moon"></i>';
         }
 
-        // 2. Save / Load Files (Markdown)
         function saveFile() {
-            const content = editor.getMarkdown();
-            const blob = new Blob([content], { type: 'text/markdown' });
-            const url = URL.createObjectURL(blob);
+            const blob = new Blob([editor.getMarkdown()], { type: 'text/markdown' });
             const a = document.createElement('a');
-            a.href = url;
+            a.href = URL.createObjectURL(blob);
             a.download = 'document.md';
-            document.body.appendChild(a);
             a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
         }
 
         function loadFile() {
             const input = document.createElement('input');
             input.type = 'file';
-            input.accept = '.md,text/markdown';
-            input.onchange = (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        editor.setMarkdown(event.target.result);
-                    };
-                    reader.readAsText(file);
-                }
+            input.onchange = e => {
+                const reader = new FileReader();
+                reader.onload = event => editor.setMarkdown(event.target.result);
+                reader.readAsText(e.target.files[0]);
             };
             input.click();
         }
 
-        // 3. Save as PDF
         function savePDF() {
-            const element = document.querySelector('.toastui-editor-contents');
-            const opt = {
-                margin:       1,
-                filename:     'document.pdf',
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-            };
-            
-            // Temporarily normalize colors for PDF export if in dark mode
-            const isDark = document.body.classList.contains('dark-theme');
-            if(isDark) document.body.classList.remove('dark-theme');
-            
-            html2pdf().set(opt).from(element).save().then(() => {
-                // Restore dark mode after export
-                if(isDark) document.body.classList.add('dark-theme');
-            });
+            html2pdf().from(document.querySelector('.toastui-editor-contents')).save('document.pdf');
         }
-
-        // 4. Drag & Drop images & Custom Context Menu
-        const contextMenu = document.getElementById('custom-context-menu');
-        let currentTarget = null;
-        let pressTimer = null;
-
-        // Ensure dynamically added images are draggable for moving via drag & drop
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.addedNodes) {
-                    mutation.addedNodes.forEach((node) => {
-                        if (node.nodeName === 'IMG') {
-                            node.setAttribute('draggable', 'true');
-                        } else if (node.querySelectorAll) {
-                            node.querySelectorAll('img').forEach(img => img.setAttribute('draggable', 'true'));
-                        }
-                    });
-                }
-            });
-        });
-        observer.observe(document.querySelector('#editor'), { childList: true, subtree: true });
-
-        // Show context menu function
-        function showContextMenu(x, y, target) {
-            currentTarget = target;
-            
-            // Adjust position for screen boundaries
-            const menuWidth = 160;
-            const menuHeight = 150;
-            const posX = x + menuWidth > window.innerWidth ? window.innerWidth - menuWidth - 10 : x;
-            const posY = y + menuHeight > window.innerHeight ? window.innerHeight - menuHeight - 10 : y;
-
-            contextMenu.style.left = posX + 'px';
-            contextMenu.style.top = posY + 'px';
-            
-            if (target.tagName === 'IMG') {
-                contextMenu.innerHTML = `
-                    <div class="context-item font-semibold border-b border-gray-200 dark:border-gray-600 mb-1" style="cursor:default">Image Options</div>
-                    <div class="context-item" onclick="execContextMenuAction('changeImage')">Change Image...</div>
-                    <div class="context-item" onclick="execContextMenuAction('alignLeft')">Align Left</div>
-                    <div class="context-item" onclick="execContextMenuAction('alignCenter')">Align Center</div>
-                    <div class="context-item text-red-500" onclick="execContextMenuAction('deleteImage')">Delete Image</div>
-                `;
-            } else {
-                contextMenu.innerHTML = `
-                    <div class="context-item font-semibold border-b border-gray-200 dark:border-gray-600 mb-1" style="cursor:default">Text Options</div>
-                    <div class="context-item" onclick="execContextMenuAction('bold')"><b>Bold</b></div>
-                    <div class="context-item" onclick="execContextMenuAction('italic')"><i>Italic</i></div>
-                    <div class="context-item" onclick="execContextMenuAction('strike')"><strike>Strikethrough</strike></div>
-                `;
-            }
-            contextMenu.classList.remove('hidden');
-        }
-
-        function hideContextMenu() {
-            contextMenu.classList.add('hidden');
-        }
-
-        window.execContextMenuAction = function(action) {
-            hideContextMenu();
-            
-            if (action === 'deleteImage' && currentTarget) {
-                currentTarget.remove();
-                // Trigger input event to sync DOM change to ToastUI state
-                const event = new Event('input', { bubbles: true });
-                document.querySelector('.toastui-editor-contents').dispatchEvent(event);
-            } else if (action === 'changeImage' && currentTarget) {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'image/*';
-                input.onchange = (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                            currentTarget.src = event.target.result;
-                            const ev = new Event('input', { bubbles: true });
-                            currentTarget.dispatchEvent(ev);
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                };
-                input.click();
-            } else if (action === 'alignLeft' && currentTarget) {
-                 currentTarget.style.display = 'block';
-                 currentTarget.style.margin = '0 auto 0 0';
-            } else if (action === 'alignCenter' && currentTarget) {
-                 currentTarget.style.display = 'block';
-                 currentTarget.style.margin = '0 auto';
-            } else if (['bold', 'italic', 'strike'].includes(action)) {
-                editor.exec(action);
-            }
-        };
-
-        // Desktop Right Click Event
-        document.addEventListener('contextmenu', (e) => {
-            if (e.target.closest('.toastui-editor-contents')) {
-                e.preventDefault();
-                showContextMenu(e.pageX, e.pageY, e.target);
-            }
-        });
-
-        // Hide on outside click
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('#custom-context-menu')) {
-                hideContextMenu();
-            }
-        });
-
-        // Mobile Touch (Long Press) Events
-        document.addEventListener('touchstart', (e) => {
-            if (e.target.closest('.toastui-editor-contents')) {
-                const touch = e.touches[0];
-                pressTimer = setTimeout(() => {
-                    showContextMenu(touch.pageX, touch.pageY, e.target);
-                }, 600);
-            }
-        });
-
-        document.addEventListener('touchend', () => {
-            if (pressTimer) clearTimeout(pressTimer);
-        });
-
-        document.addEventListener('touchmove', () => {
-            if (pressTimer) clearTimeout(pressTimer);
-            hideContextMenu();
-        });
     </script>
 </body>
 </html>
