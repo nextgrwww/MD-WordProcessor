@@ -15,8 +15,8 @@
     <!-- html2pdf for PDF export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
-    <!-- Lucide Icons (MacOS SF Symbols alternative) -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
     <style>
         :root {
@@ -190,25 +190,22 @@
             transition: background 0.2s, transform 0.1s;
         }
 
-        body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar button:hover {
-            background: rgba(128, 128, 128, 0.15) !important;
-        }
-
-        /* Enforce transparency and alignment for injected SVG icons */
-        body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar-icons {
+        /* Enforce transparency and alignment for injected Phosphor icons */
+        body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar button.toastui-editor-toolbar-icons {
             background-image: none !important;
             display: flex !important;
             align-items: center;
             justify-content: center;
         }
-        
-        body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar-icons svg,
-        .mac-toolbar-actions button svg {
+
+        .ph {
+            pointer-events: none; /* Let clicks pass through to the button */
+            font-size: 18px;
             color: var(--mac-text);
-            stroke: currentColor;
-            width: 17px;
-            height: 17px;
-            pointer-events: none;
+        }
+
+        body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar button:hover {
+            background: rgba(128, 128, 128, 0.15) !important;
         }
 
         body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar .toastui-editor-toolbar-divider {
@@ -249,7 +246,6 @@
             }
             .toastui-editor-contents {
                 padding: 1rem !important;
-            }
         }
     </style>
 </head>
@@ -264,15 +260,14 @@
     <div id="mac-ui-template" style="display: none;">
         <div class="mac-left-ui flex items-center gap-4 mr-4 flex-shrink-0">
             <div class="mac-title hidden md:flex items-center">
-                <svg style="display:inline; width:14px; height:14px; margin-right:4px; vertical-align:text-top; fill:currentColor;" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-                Document.md
+                <i class="ph-fill ph-file-text text-[16px] mr-1"></i> Document.md
             </div>
         </div>
         <div class="mac-toolbar-actions ml-4 flex-shrink-0">
-            <button onclick="toggleTheme()" title="Toggle Dark/Light Mode" id="theme-btn"><i data-lucide="moon"></i></button>
-            <button onclick="loadFile()" title="Load Markdown File"><i data-lucide="folder-open"></i></button>
-            <button onclick="saveFile()" title="Save as Markdown"><i data-lucide="save"></i></button>
-            <button onclick="savePDF()" title="Export to PDF"><i data-lucide="file-down"></i></button>
+            <button onclick="toggleTheme()" title="Toggle Dark/Light Mode" id="theme-btn"><i class="ph ph-moon"></i></button>
+            <button onclick="loadFile()" title="Load Markdown File"><i class="ph ph-folder-open"></i></button>
+            <button onclick="saveFile()" title="Save as Markdown"><i class="ph ph-floppy-disk"></i></button>
+            <button onclick="savePDF()" title="Export to PDF"><i class="ph ph-file-pdf"></i></button>
         </div>
     </div>
 
@@ -368,50 +363,50 @@ Highlight this text to make it bold, or add a table using the menu bar above.
         wrapper.appendChild(toolbar);
         wrapper.appendChild(rightUI);
 
-        // --- INJECT MAC-STYLE ICONS ---
-        // Map TUI default classes to Lucide icons
-        const lucideIcons = {
-            'heading': 'heading',
-            'bold': 'bold',
-            'italic': 'italic',
-            'strike': 'strikethrough',
-            'hr': 'minus',
-            'quote': 'text-quote',
-            'ul': 'list',
-            'ol': 'list-ordered',
-            'task': 'list-todo',
-            'indent': 'indent',
-            'outdent': 'outdent',
-            'table': 'table',
-            'image': 'image',
-            'link': 'link',
-            'code': 'code',
-            'codeblock': 'file-code'
+        // --- INJECT PHOSPHOR ICONS ---
+        // Using robust aria-label mapping to bypass TUI's internal class obfuscation
+        const phosphorIcons = {
+            'Heading': 'ph-text-h',
+            'Bold': 'ph-text-b',
+            'Italic': 'ph-text-italic',
+            'Strike': 'ph-text-strikethrough',
+            'Line': 'ph-minus',
+            'Blockquote': 'ph-quotes',
+            'Unordered list': 'ph-list-bullets',
+            'Ordered list': 'ph-list-numbers',
+            'Task': 'ph-check-square-offset',
+            'Indent': 'ph-text-indent',
+            'Outdent': 'ph-text-outdent',
+            'Insert table': 'ph-table',
+            'Insert image': 'ph-image',
+            'Insert link': 'ph-link',
+            'Code': 'ph-code',
+            'Code block': 'ph-file-code',
+            'Undo': 'ph-arrow-u-up-left',
+            'Redo': 'ph-arrow-u-up-right',
+            'Cut': 'ph-scissors',
+            'Copy': 'ph-copy',
+            'Paste': 'ph-clipboard',
+            'Move Up': 'ph-arrow-up',
+            'Move Down': 'ph-arrow-down'
         };
 
-        // Inject Lucide template tags into TUI buttons safely
-        function injectIcons() {
-            let rendered = false;
-            Object.keys(lucideIcons).forEach(key => {
-                const btns = document.querySelectorAll(`.toastui-editor-toolbar-icons.${key}`);
-                btns.forEach(btn => {
-                    if (!btn.querySelector('i') && !btn.querySelector('svg')) {
-                        btn.innerHTML = `<i data-lucide="${lucideIcons[key]}"></i>`;
-                        rendered = true;
-                    }
-                });
+        function injectPhosphorIcons() {
+            Object.keys(phosphorIcons).forEach(label => {
+                // Find button by its aria-label, which is always consistent in TUI
+                const btn = document.querySelector(`button[aria-label="${label}"]`);
+                if (btn && !btn.querySelector('.ph')) {
+                    btn.innerHTML = `<i class="ph ${phosphorIcons[label]}"></i>`;
+                }
             });
-            if (rendered) {
-                lucide.createIcons({ attrs: { "stroke-width": 1.5 } });
-            }
         }
 
         // Initial injection
-        injectIcons();
+        injectPhosphorIcons();
 
-        // Keep icons present when Toast UI dynamically recalculates layout (e.g. resize)
+        // Ensure custom icons persist if TUI redraws the toolbar internally
         const toolbarObserver = new MutationObserver(() => {
-            injectIcons();
+            injectPhosphorIcons();
         });
         toolbarObserver.observe(toolbar, { childList: true, subtree: true });
 
@@ -425,15 +420,12 @@ Highlight this text to make it bold, or add a table using the menu bar above.
             if (isDarkMode) {
                 document.body.classList.add('dark-theme');
                 editorEl.classList.add('toastui-editor-dark');
-                themeBtn.innerHTML = '<i data-lucide="sun"></i>';
+                themeBtn.innerHTML = '<i class="ph ph-sun"></i>';
             } else {
                 document.body.classList.remove('dark-theme');
                 editorEl.classList.remove('toastui-editor-dark');
-                themeBtn.innerHTML = '<i data-lucide="moon"></i>';
+                themeBtn.innerHTML = '<i class="ph ph-moon"></i>';
             }
-            
-            // Re-render the swapped sun/moon icon
-            lucide.createIcons({ attrs: { "stroke-width": 1.5 } });
         }
 
         // 2. Save / Load Files (Markdown)
