@@ -31,6 +31,11 @@
             --context-hover: #f3f4f6;
             --context-text: #374151;
             --context-border: #e5e7eb;
+            --mac-bottom-bg: #f3f3f3;
+            --mac-bottom-border: #e5e5e5;
+            --mac-bottom-text: #555555;
+            --mac-bottom-active-bg: #ffffff;
+            --mac-bottom-active-text: #007aff;
         }
 
         .dark-theme {
@@ -42,6 +47,11 @@
             --context-hover: #3d3d3d;
             --context-text: #e5e7eb;
             --context-border: #444444;
+            --mac-bottom-bg: #2d2d2d;
+            --mac-bottom-border: #000000;
+            --mac-bottom-text: #aaaaaa;
+            --mac-bottom-active-bg: #1e1e1e;
+            --mac-bottom-active-text: #0a84ff;
         }
 
         body {
@@ -142,7 +152,27 @@
             background-color: var(--mac-window-bg);
         }
 
+        .mac-toolbar-wrapper {
+            background: var(--mac-titlebar-bg);
+            border-bottom: 1px solid var(--mac-titlebar-border);
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 52px;
+            user-select: none;
+            width: 100%;
+            box-sizing: border-box;
+            overflow-x: auto;
+            scrollbar-width: none; /* Firefox */
+        }
+        
+        .mac-toolbar-wrapper::-webkit-scrollbar {
+            display: none;
+        }
+
         .toastui-editor-toolbar {
+            background: transparent !important;
             border: none !important;
             padding: 0 8px !important;
             display: flex !important;
@@ -152,9 +182,8 @@
             min-height: auto !important;
             flex: 1;
             overflow: visible !important;
-            background: transparent !important; /* Overridden by inline style in JS */
         }
-
+        
         /* Hide TUI More button to rely entirely on horizontal scrolling */
         body #editor-container .toastui-editor-defaultUI button[aria-label="More"] {
             display: none !important;
@@ -216,18 +245,18 @@
         }
 
         .toastui-editor-mode-switch {
-            background-color: #f3f3f3 !important;
-            border-top: 1px solid #e5e5e5 !important;
+            background-color: var(--mac-bottom-bg) !important;
+            border-top: 1px solid var(--mac-bottom-border) !important;
         }
 
         .toastui-editor-mode-switch .tab-item {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-            color: #555 !important;
+            color: var(--mac-bottom-text) !important;
         }
 
         .toastui-editor-mode-switch .tab-item.active {
-            color: #007aff !important; /* macOS selection blue */
-            background-color: #fff !important;
+            color: var(--mac-bottom-active-text) !important; /* macOS selection blue */
+            background-color: var(--mac-bottom-active-bg) !important;
         }
 
         .toastui-editor-contents {
@@ -343,38 +372,26 @@ Highlight this text to make it bold, or add a table using the menu bar above.
                     ['hr', 'quote'],
                     ['ul', 'ol', 'task', 'indent', 'outdent'],
                     ['table', 'image', 'link'],
-                    ['code', 'codeblock']
+                    ['code', 'codeblock'] // Lowercase 'codeblock' is used internally by TUI in some versions
                 ]
             });
 
-            // --- MERGE MACOS UI INTO EDITOR TOOLBAR (FIX: Keep toolbar in place) ---
+            // --- MERGE MACOS UI INTO EDITOR TOOLBAR ---
             const toolbar = document.querySelector('.toastui-editor-toolbar');
-            if (!toolbar) return;
-
-            // Apply macOS titlebar styling directly to the native toolbar
-            Object.assign(toolbar.style, {
-                background: 'var(--mac-titlebar-bg)',
-                borderBottom: '1px solid var(--mac-titlebar-border)',
-                padding: '8px 12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-start',  // we'll push right UI with margin-left: auto
-                minHeight: '52px',
-                width: '100%',
-                boxSizing: 'border-box',
-                overflowX: 'auto',
-                scrollbarWidth: 'none',
-                userSelect: 'none'
-            });
-
-            // Clone macOS left UI (title) and prepend to toolbar
+            
+            // 2. Create an outer wrapper to sit in place of the toolbar
+            const wrapper = document.createElement('div');
+            wrapper.className = 'mac-toolbar-wrapper';
+            toolbar.parentNode.insertBefore(wrapper, toolbar);
+            
+            // 3. Inject the macOS UI (Title on left, Actions on right) around the toolbar
             const template = document.getElementById('mac-ui-template');
-            const leftUI = template.querySelector('.mac-left-ui').cloneNode(true);
-            leftUI.style.display = 'flex';
-            leftUI.style.flexShrink = '0';
-            toolbar.prepend(leftUI);
+            const leftUI = template.querySelector('.mac-left-ui');
+            const rightUI = template.querySelector('.mac-toolbar-actions');
+            
+            wrapper.appendChild(leftUI);
 
-            // --- Custom Toolbar Buttons (Edit, Move) ---
+            // --- INJECT CUSTOM ADVANCED BUTTONS (Outside of Preact's reach) ---
             const customTools = document.createElement('div');
             customTools.className = 'flex items-center gap-1 flex-shrink-0';
             
@@ -382,15 +399,12 @@ Highlight this text to make it bold, or add a table using the menu bar above.
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = 'flex items-center justify-center';
-                Object.assign(btn.style, {
-                    width: '32px', height: '32px', margin: '0 2px', borderRadius: '6px',
-                    background: 'transparent', border: 'none', cursor: 'pointer',
-                    color: 'var(--mac-text)', transition: 'background 0.2s, transform 0.1s'
-                });
+                btn.style.cssText = 'width: 32px; height: 32px; margin: 0 2px; border-radius: 6px; background: transparent; border: none; cursor: pointer; color: var(--mac-text); transition: background 0.2s, transform 0.1s;';
                 btn.setAttribute('aria-label', label);
                 btn.title = label;
                 btn.innerHTML = `<i class="ph ${icon}" style="font-size: 18px; pointer-events: none;"></i>`;
                 btn.addEventListener('click', onClick);
+                
                 btn.onmouseover = () => btn.style.background = 'rgba(128, 128, 128, 0.15)';
                 btn.onmouseout = () => btn.style.background = 'transparent';
                 btn.onmousedown = () => btn.style.transform = 'scale(0.95)';
@@ -401,14 +415,12 @@ Highlight this text to make it bold, or add a table using the menu bar above.
             function createDivider() {
                 const div = document.createElement('div');
                 div.className = 'toastui-editor-toolbar-divider';
-                Object.assign(div.style, {
-                    backgroundColor: 'var(--mac-titlebar-border)',
-                    opacity: '0.5',
-                    height: '20px',
-                    margin: '0 6px',
-                    width: '1px',
-                    display: 'inline-block'
-                });
+                div.style.backgroundColor = 'var(--mac-titlebar-border)';
+                div.style.opacity = '0.5';
+                div.style.height = '20px';
+                div.style.margin = '0 6px';
+                div.style.width = '1px';
+                div.style.display = 'inline-block';
                 return div;
             }
 
@@ -431,22 +443,19 @@ Highlight this text to make it bold, or add a table using the menu bar above.
 
             // Line Manipulation
             const moveGroup = document.createElement('div');
-            moveGroup.className = 'flex items-center';
+            moveGroup.className = 'flex items-center pl-1';
             moveGroup.appendChild(createCustomBtn('Move Up', 'ph-arrow-up', moveUp));
             moveGroup.appendChild(createCustomBtn('Move Down', 'ph-arrow-down', moveDown));
 
             customTools.appendChild(editGroup);
             customTools.appendChild(createDivider());
             customTools.appendChild(moveGroup);
+            customTools.appendChild(createDivider());
 
-            // Insert custom tools after the left UI (child index 0) but before the native toolbar items
-            toolbar.insertBefore(customTools, toolbar.children[1]);
-
-            // Clone and append macOS right UI (theme, save, etc.) with margin-left: auto to push to right
-            const rightUI = template.querySelector('.mac-toolbar-actions').cloneNode(true);
-            rightUI.style.flexShrink = '0';
-            rightUI.style.marginLeft = 'auto';
-            toolbar.appendChild(rightUI);
+            // Place custom tools BEFORE the main toolbar inside the wrapper
+            wrapper.appendChild(customTools);
+            wrapper.appendChild(toolbar);
+            wrapper.appendChild(rightUI);
 
             // --- INJECT PHOSPHOR ICONS TO NATIVE BUTTONS ---
             const ariaMap = {
@@ -468,18 +477,21 @@ Highlight this text to make it bold, or add a table using the menu bar above.
                         if (!btn.querySelector('.ph')) {
                             btn.innerHTML = `<i class="ph ${ariaMap[label]}"></i>`;
                         }
-                        btn.title = label;
+                        btn.title = label; // Add tooltip
                     }
                 });
             }
 
+            // Initial injection
             injectPhosphorIcons();
+
+            // Observe the native toolbar to ensure icons persist if TUI redraws it
             const toolbarObserver = new MutationObserver(() => {
                 injectPhosphorIcons();
             });
             toolbarObserver.observe(toolbar, { childList: true, subtree: true });
 
-            // Bind external actions for the right UI buttons
+            // Make external methods available for UI actions
             window.toggleTheme = function() {
                 document.body.classList.toggle('dark-theme');
                 document.querySelector('.toastui-editor-defaultUI').classList.toggle('toastui-editor-dark');
@@ -539,7 +551,7 @@ Highlight this text to make it bold, or add a table using the menu bar above.
             const block = getClosestBlockNode(sel.anchorNode);
             if (block && block.previousElementSibling) {
                 block.parentNode.insertBefore(block, block.previousElementSibling);
-                block.parentNode.dispatchEvent(new Event('input', { bubbles: true }));
+                block.parentNode.dispatchEvent(new Event('input', { bubbles: true })); // Sync TUI state
             }
         }
 
@@ -549,7 +561,7 @@ Highlight this text to make it bold, or add a table using the menu bar above.
             const block = getClosestBlockNode(sel.anchorNode);
             if (block && block.nextElementSibling) {
                 block.parentNode.insertBefore(block.nextElementSibling, block);
-                block.parentNode.dispatchEvent(new Event('input', { bubbles: true }));
+                block.parentNode.dispatchEvent(new Event('input', { bubbles: true })); // Sync TUI state
             }
         }
 
@@ -571,6 +583,7 @@ Highlight this text to make it bold, or add a table using the menu bar above.
                 }
             });
         });
+        // We defer observing until editor is attached
         setTimeout(() => {
             const ed = document.querySelector('#editor');
             if(ed) observer.observe(ed, { childList: true, subtree: true });
