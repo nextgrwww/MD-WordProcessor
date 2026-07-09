@@ -11,7 +11,7 @@
     <!-- Tailwind CSS for layout utilities -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Toast UI Editor CSS -->
+    <!-- Toast UI Editor CSS (Official CDN) -->
     <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
     <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/theme/toastui-editor-dark.min.css" />
     
@@ -80,6 +80,7 @@
             white-space: nowrap;
         }
 
+        /* Custom Toolbar Buttons */
         .mac-toolbar-actions {
             display: flex;
             gap: 8px;
@@ -108,6 +109,7 @@
             transform: scale(0.95);
         }
 
+        /* Context Menu Styles */
         #custom-context-menu {
             background-color: var(--context-bg);
             color: var(--context-text);
@@ -131,6 +133,7 @@
             background: #fff;
         }
 
+        /* TUI Overrides for seamless integration */
         .toastui-editor-defaultUI {
             border: none !important;
             display: flex;
@@ -150,6 +153,12 @@
             user-select: none;
             width: 100%;
             box-sizing: border-box;
+            overflow-x: auto;
+            scrollbar-width: none; /* Firefox */
+        }
+        
+        .mac-toolbar-wrapper::-webkit-scrollbar {
+            display: none;
         }
 
         .toastui-editor-toolbar {
@@ -162,19 +171,15 @@
             flex-wrap: nowrap !important;
             min-height: auto !important;
             flex: 1;
-            overflow-x: auto !important;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
+            overflow: visible !important;
         }
         
-        .toastui-editor-toolbar::-webkit-scrollbar {
-            display: none;
-        }
-        
+        /* Hide TUI More button to rely entirely on horizontal scrolling */
         body #editor-container .toastui-editor-defaultUI button[aria-label="More"] {
             display: none !important;
         }
 
+        /* Aggressively force ALL of TUI's internal wrappers to be completely transparent */
         body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar,
         body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar div:not(.toastui-editor-toolbar-divider) {
             background: transparent !important;
@@ -191,6 +196,7 @@
             flex-shrink: 0 !important;
         }
 
+        /* Minimalist icon buttons */
         body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar button {
             background: transparent !important;
             border: none !important;
@@ -200,6 +206,7 @@
             transition: background 0.2s, transform 0.1s;
         }
 
+        /* Enforce transparency and alignment for injected Phosphor icons */
         body #editor-container .toastui-editor-defaultUI .toastui-editor-toolbar button.toastui-editor-toolbar-icons {
             background-image: none !important;
             display: flex !important;
@@ -208,7 +215,7 @@
         }
 
         .ph {
-            pointer-events: none;
+            pointer-events: none; /* Let clicks pass through to the button */
             font-size: 18px;
             color: var(--mac-text);
         }
@@ -227,6 +234,21 @@
             flex-shrink: 0 !important;
         }
 
+        .toastui-editor-mode-switch {
+            background-color: #f3f3f3 !important;
+            border-top: 1px solid #e5e5e5 !important;
+        }
+
+        .toastui-editor-mode-switch .tab-item {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+            color: #555 !important;
+        }
+
+        .toastui-editor-mode-switch .tab-item.active {
+            color: #007aff !important; /* macOS selection blue */
+            background-color: #fff !important;
+        }
+
         .toastui-editor-contents {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
             font-size: 15px !important;
@@ -234,15 +256,23 @@
         }
 
         @media (max-width: 640px) {
-            .mac-window { width: 95vw; height: 95vh; }
-            .toastui-editor-contents { padding: 1rem !important; }
+            .mac-window {
+                width: 95vw;
+                height: 95vh;
+            }
+            .toastui-editor-contents {
+                padding: 1rem !important;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Custom Context Menu -->
+    <div id="custom-context-menu" class="hidden absolute shadow-2xl rounded-lg border text-sm py-1 z-50 min-w-[160px] transition-opacity duration-200">
+        <!-- Items injected by JS -->
+    </div>
 
-    <div id="custom-context-menu" class="hidden absolute shadow-2xl rounded-lg border text-sm py-1 z-50 min-w-[160px] transition-opacity duration-200"></div>
-
+    <!-- Hidden Template for macOS UI Elements -->
     <div id="mac-ui-template" style="display: none;">
         <div class="mac-left-ui flex items-center gap-4 mr-4 flex-shrink-0">
             <div class="mac-title hidden md:flex items-center">
@@ -258,114 +288,251 @@
     </div>
 
     <div class="mac-window">
+        <!-- Editor Container (Title bar is now merged into Editor Toolbar) -->
         <div id="editor-container">
             <div id="editor"></div>
         </div>
     </div>
 
+    <!-- Toast UI Editor JS (Official CDN) -->
     <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
     
     <script>
+        // Fix benign ResizeObserver errors caused by TUI Editor's dynamic layout
         const OriginalResizeObserver = window.ResizeObserver;
         window.ResizeObserver = class ResizeObserver extends OriginalResizeObserver {
             constructor(callback) {
                 super((entries, observer) => {
                     window.requestAnimationFrame(() => {
                         if (!Array.isArray(entries) || !entries.length) return;
-                        try { callback(entries, observer); } catch (e) {}
+                        try {
+                            callback(entries, observer);
+                        } catch (e) {
+                            // Suppress internal resize callback errors
+                        }
                     });
                 });
             }
         };
 
-        const editor = new toastui.Editor({
-            el: document.querySelector('#editor'),
-            height: '100%',
-            initialEditType: 'wysiwyg',
-            previewStyle: 'vertical',
-            initialValue: "# Welcome to macOS Markdown 📝",
-            useCommandShortcut: true,
-            toolbarItems: [
-                ['heading', 'bold', 'italic', 'strike'],
-                ['hr', 'quote'],
-                ['ul', 'ol', 'task', 'indent', 'outdent'],
-                ['table', 'image', 'link'],
-                ['code', 'codeBlock']
-            ]
-        });
-
-        const toolbar = document.querySelector('.toastui-editor-toolbar');
-        const wrapper = document.createElement('div');
-        wrapper.className = 'mac-toolbar-wrapper';
-        toolbar.parentNode.insertBefore(wrapper, toolbar);
-        
-        const template = document.getElementById('mac-ui-template');
-        wrapper.appendChild(template.querySelector('.mac-left-ui'));
-        wrapper.appendChild(toolbar);
-
-        // We append custom tools to OUR wrapper, not TUI's toolbar, so Preact never deletes them.
-        const customToolsContainer = document.createElement('div');
-        customToolsContainer.className = 'flex items-center gap-1 flex-shrink-0';
-        
-        const createBtn = (label, icon, onClick) => {
-            const btn = document.createElement('button');
-            btn.className = 'toastui-editor-toolbar-icons flex items-center justify-center';
-            btn.style.cssText = 'width: 32px; height: 32px; margin: 0 2px; border-radius: 6px; background: transparent; border: none; cursor: pointer; color: var(--mac-text); transition: background 0.2s, transform 0.1s;';
-            btn.setAttribute('aria-label', label);
-            btn.title = label;
-            btn.innerHTML = `<i class="ph ${icon}" style="font-size: 18px; pointer-events: none;"></i>`;
-            btn.addEventListener('click', onClick);
-            // macOS style hover states
-            btn.onmouseover = () => btn.style.background = 'rgba(128, 128, 128, 0.15)';
-            btn.onmouseout = () => btn.style.background = 'transparent';
-            btn.onmousedown = () => btn.style.transform = 'scale(0.95)';
-            btn.onmouseup = () => btn.style.transform = 'scale(1)';
-            return btn;
-        };
-
-        const editGroup = document.createElement('div');
-        editGroup.className = 'flex items-center border-l border-gray-300 dark:border-gray-600 pl-1 ml-1';
-        editGroup.appendChild(createBtn('Undo', 'ph-arrow-u-up-left', () => editor.exec('undo')));
-        editGroup.appendChild(createBtn('Redo', 'ph-arrow-u-up-right', () => editor.exec('redo')));
-        editGroup.appendChild(createBtn('Cut', 'ph-scissors', () => document.execCommand('cut')));
-        editGroup.appendChild(createBtn('Copy', 'ph-copy', () => document.execCommand('copy')));
-        editGroup.appendChild(createBtn('Paste', 'ph-clipboard', async () => {
-            try {
-                const text = await navigator.clipboard.readText();
-                editor.insertText(text);
-            } catch (e) {
-                document.execCommand('paste');
+        window.addEventListener('error', e => {
+            if (e.message && e.message.includes('ResizeObserver')) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
             }
-        }));
+        }, { capture: true });
 
-        const moveGroup = document.createElement('div');
-        moveGroup.className = 'flex items-center border-l border-gray-300 dark:border-gray-600 pl-1 ml-1';
-        moveGroup.appendChild(createBtn('Move Up', 'ph-arrow-up', moveUp));
-        moveGroup.appendChild(createBtn('Move Down', 'ph-arrow-down', moveDown));
+        const initialContent = `
+# Welcome to macOS Markdown 📝
 
-        customToolsContainer.appendChild(editGroup);
-        customToolsContainer.appendChild(moveGroup);
-        wrapper.appendChild(customToolsContainer);
-        
-        wrapper.appendChild(template.querySelector('.mac-toolbar-actions'));
+This is a beautiful, macOS Catalina-inspired Markdown editor. It seamlessly blends standard word processing tools with raw Markdown.
 
-        const phosphorIcons = {
-            'Heading': 'ph-text-h', 'Bold': 'ph-text-b', 'Italic': 'ph-text-italic',
-            'Strike': 'ph-text-strikethrough', 'Line': 'ph-minus', 'Blockquote': 'ph-quotes',
-            'Unordered list': 'ph-list-bullets', 'Ordered list': 'ph-list-numbers',
-            'Task': 'ph-check-square', 'Indent': 'ph-text-indent', 'Outdent': 'ph-text-outdent',
-            'Insert table': 'ph-table', 'Insert image': 'ph-image', 'Insert link': 'ph-link',
-            'Code': 'ph-code', 'Code block': 'ph-file-code'
+## Features Included:
+* **WYSIWYG Mode:** Edit your document like a standard word processor. Use the toolbar above!
+* **Markdown Mode:** Click the toggle at the bottom to switch to raw code view.
+* **Media Support:** Easily embed images and links.
+* **Catalina UI Kit:** Clean, frosted, and native-feeling window decorations.
+
+> "Design is not just what it looks like and feels like. Design is how it works." 
+> — *Steve Jobs*
+
+---
+
+### Try it yourself!
+Highlight this text to make it bold, or add a table using the menu bar above.
+`;
+
+        // We wrap everything in an onload to make sure toastui object exists
+        window.onload = function() {
+            if (typeof toastui === 'undefined') {
+                console.error("Toast UI Editor script failed to load.");
+                return;
+            }
+
+            // Initialize the Toast UI Editor
+            const editor = new toastui.Editor({
+                el: document.querySelector('#editor'),
+                height: '100%',
+                initialEditType: 'wysiwyg', 
+                previewStyle: 'vertical',
+                initialValue: initialContent.trim(),
+                useCommandShortcut: true,
+                toolbarItems: [
+                    ['heading', 'bold', 'italic', 'strike'],
+                    ['hr', 'quote'],
+                    ['ul', 'ol', 'task', 'indent', 'outdent'],
+                    ['table', 'image', 'link'],
+                    ['code', 'codeblock'] // Lowercase 'codeblock' is used internally by TUI in some versions
+                ]
+            });
+
+            // --- MERGE MACOS UI INTO EDITOR TOOLBAR ---
+            const toolbar = document.querySelector('.toastui-editor-toolbar');
+            
+            // 2. Create an outer wrapper to sit in place of the toolbar
+            const wrapper = document.createElement('div');
+            wrapper.className = 'mac-toolbar-wrapper';
+            toolbar.parentNode.insertBefore(wrapper, toolbar);
+            
+            // 3. Inject the macOS UI (Title on left, Actions on right) around the toolbar
+            const template = document.getElementById('mac-ui-template');
+            const leftUI = template.querySelector('.mac-left-ui');
+            const rightUI = template.querySelector('.mac-toolbar-actions');
+            
+            wrapper.appendChild(leftUI);
+
+            // --- INJECT CUSTOM ADVANCED BUTTONS (Outside of Preact's reach) ---
+            const customTools = document.createElement('div');
+            customTools.className = 'flex items-center gap-1 flex-shrink-0';
+            
+            function createCustomBtn(label, icon, onClick) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'flex items-center justify-center';
+                btn.style.cssText = 'width: 32px; height: 32px; margin: 0 2px; border-radius: 6px; background: transparent; border: none; cursor: pointer; color: var(--mac-text); transition: background 0.2s, transform 0.1s;';
+                btn.setAttribute('aria-label', label);
+                btn.title = label;
+                btn.innerHTML = `<i class="ph ${icon}" style="font-size: 18px; pointer-events: none;"></i>`;
+                btn.addEventListener('click', onClick);
+                
+                btn.onmouseover = () => btn.style.background = 'rgba(128, 128, 128, 0.15)';
+                btn.onmouseout = () => btn.style.background = 'transparent';
+                btn.onmousedown = () => btn.style.transform = 'scale(0.95)';
+                btn.onmouseup = () => btn.style.transform = 'scale(1)';
+                return btn;
+            }
+            
+            function createDivider() {
+                const div = document.createElement('div');
+                div.className = 'toastui-editor-toolbar-divider';
+                div.style.backgroundColor = 'var(--mac-titlebar-border)';
+                div.style.opacity = '0.5';
+                div.style.height = '20px';
+                div.style.margin = '0 6px';
+                div.style.width = '1px';
+                div.style.display = 'inline-block';
+                return div;
+            }
+
+            // History / Clipboard
+            const editGroup = document.createElement('div');
+            editGroup.className = 'flex items-center';
+            editGroup.appendChild(createCustomBtn('Undo', 'ph-arrow-u-up-left', () => editor.exec('undo')));
+            editGroup.appendChild(createCustomBtn('Redo', 'ph-arrow-u-up-right', () => editor.exec('redo')));
+            editGroup.appendChild(createDivider());
+            editGroup.appendChild(createCustomBtn('Cut', 'ph-scissors', () => document.execCommand('cut')));
+            editGroup.appendChild(createCustomBtn('Copy', 'ph-copy', () => document.execCommand('copy')));
+            editGroup.appendChild(createCustomBtn('Paste', 'ph-clipboard', async () => {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    editor.insertText(text);
+                } catch (e) {
+                    document.execCommand('paste');
+                }
+            }));
+
+            // Line Manipulation
+            const moveGroup = document.createElement('div');
+            moveGroup.className = 'flex items-center pl-1';
+            moveGroup.appendChild(createCustomBtn('Move Up', 'ph-arrow-up', moveUp));
+            moveGroup.appendChild(createCustomBtn('Move Down', 'ph-arrow-down', moveDown));
+
+            customTools.appendChild(editGroup);
+            customTools.appendChild(createDivider());
+            customTools.appendChild(moveGroup);
+            customTools.appendChild(createDivider());
+
+            // Place custom tools BEFORE the main toolbar inside the wrapper
+            wrapper.appendChild(customTools);
+            wrapper.appendChild(toolbar);
+            wrapper.appendChild(rightUI);
+
+            // --- INJECT PHOSPHOR ICONS TO NATIVE BUTTONS ---
+            const ariaMap = {
+                'Heading': 'ph-text-h', 'Bold': 'ph-text-b', 'Italic': 'ph-text-italic',
+                'Strike': 'ph-text-strikethrough', 'Line': 'ph-minus', 'Horizontal rule': 'ph-minus',
+                'Blockquote': 'ph-quotes', 'Unordered list': 'ph-list-bullets',
+                'Ordered list': 'ph-list-numbers', 'Task': 'ph-check-square-offset',
+                'Indent': 'ph-text-indent', 'Outdent': 'ph-text-outdent',
+                'Insert table': 'ph-table', 'Insert image': 'ph-image', 'Insert link': 'ph-link',
+                'Code': 'ph-code', 'Inline code': 'ph-code', 
+                'Code block': 'ph-file-code', 'CodeBlock': 'ph-file-code'
+            };
+
+            function injectPhosphorIcons() {
+                const buttons = document.querySelectorAll('.toastui-editor-toolbar button');
+                buttons.forEach(btn => {
+                    const label = btn.getAttribute('aria-label');
+                    if (label && ariaMap[label]) {
+                        if (!btn.querySelector('.ph')) {
+                            btn.innerHTML = `<i class="ph ${ariaMap[label]}"></i>`;
+                        }
+                        btn.title = label; // Add tooltip
+                    }
+                });
+            }
+
+            // Initial injection
+            injectPhosphorIcons();
+
+            // Observe the native toolbar to ensure icons persist if TUI redraws it
+            const toolbarObserver = new MutationObserver(() => {
+                injectPhosphorIcons();
+            });
+            toolbarObserver.observe(toolbar, { childList: true, subtree: true });
+
+            // Make external methods available for UI actions
+            window.toggleTheme = function() {
+                document.body.classList.toggle('dark-theme');
+                document.querySelector('.toastui-editor-defaultUI').classList.toggle('toastui-editor-dark');
+                document.querySelector('#theme-btn').innerHTML = document.body.classList.contains('dark-theme') ? '<i class="ph ph-sun"></i>' : '<i class="ph ph-moon"></i>';
+            };
+
+            window.saveFile = function() {
+                const blob = new Blob([editor.getMarkdown()], { type: 'text/markdown' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'document.md';
+                a.click();
+            };
+
+            window.loadFile = function() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.md,text/markdown';
+                input.onchange = e => {
+                    const reader = new FileReader();
+                    reader.onload = event => editor.setMarkdown(event.target.result);
+                    reader.readAsText(e.target.files[0]);
+                };
+                input.click();
+            };
+
+            window.savePDF = function() {
+                const element = document.querySelector('.toastui-editor-contents');
+                const isDark = document.body.classList.contains('dark-theme');
+                if(isDark) document.body.classList.remove('dark-theme');
+                
+                html2pdf().from(element).save('document.pdf').then(() => {
+                    if(isDark) document.body.classList.add('dark-theme');
+                });
+            };
+            
+            // Expose editor for context menu
+            window.editorInstance = editor;
         };
 
-        function injectAll() {
-            Object.keys(phosphorIcons).forEach(label => {
-                const btn = document.querySelector(`button[aria-label="${label}"]`);
-                if (btn && !btn.querySelector('.ph')) {
-                    btn.innerHTML = `<i class="ph ${phosphorIcons[label]}"></i>`;
-                    btn.title = label;
+        // Shifting algorithms
+        function getClosestBlockNode(node) {
+            if (!node) return null;
+            if (node.nodeType === 3) node = node.parentNode;
+            while (node && node.parentNode) {
+                if (node.parentNode.classList && node.parentNode.classList.contains('ProseMirror')) {
+                    return node;
                 }
-            });
+                node = node.parentNode;
+            }
+            return null;
         }
 
         function moveUp() {
@@ -374,6 +541,7 @@
             const block = getClosestBlockNode(sel.anchorNode);
             if (block && block.previousElementSibling) {
                 block.parentNode.insertBefore(block, block.previousElementSibling);
+                block.parentNode.dispatchEvent(new Event('input', { bubbles: true })); // Sync TUI state
             }
         }
 
@@ -383,46 +551,132 @@
             const block = getClosestBlockNode(sel.anchorNode);
             if (block && block.nextElementSibling) {
                 block.parentNode.insertBefore(block.nextElementSibling, block);
+                block.parentNode.dispatchEvent(new Event('input', { bubbles: true })); // Sync TUI state
             }
         }
 
-        function getClosestBlockNode(node) {
-            if (!node) return null;
-            if (node.nodeType === 3) node = node.parentNode;
-            while (node && node.parentNode) {
-                if (node.parentNode.classList && node.parentNode.classList.contains('ProseMirror')) return node;
-                node = node.parentNode;
+        // Drag & Drop images & Custom Context Menu
+        const contextMenu = document.getElementById('custom-context-menu');
+        let currentTarget = null;
+        let pressTimer = null;
+
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.addedNodes) {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeName === 'IMG') {
+                            node.setAttribute('draggable', 'true');
+                        } else if (node.querySelectorAll) {
+                            node.querySelectorAll('img').forEach(img => img.setAttribute('draggable', 'true'));
+                        }
+                    });
+                }
+            });
+        });
+        // We defer observing until editor is attached
+        setTimeout(() => {
+            const ed = document.querySelector('#editor');
+            if(ed) observer.observe(ed, { childList: true, subtree: true });
+        }, 1000);
+
+        function showContextMenu(x, y, target) {
+            currentTarget = target;
+            const menuWidth = 160;
+            const menuHeight = 150;
+            const posX = x + menuWidth > window.innerWidth ? window.innerWidth - menuWidth - 10 : x;
+            const posY = y + menuHeight > window.innerHeight ? window.innerHeight - menuHeight - 10 : y;
+
+            contextMenu.style.left = posX + 'px';
+            contextMenu.style.top = posY + 'px';
+            
+            if (target.tagName === 'IMG') {
+                contextMenu.innerHTML = `
+                    <div class="context-item font-semibold border-b border-gray-200 dark:border-gray-600 mb-1" style="cursor:default">Image Options</div>
+                    <div class="context-item" onclick="execContextMenuAction('changeImage')">Change Image...</div>
+                    <div class="context-item" onclick="execContextMenuAction('alignLeft')">Align Left</div>
+                    <div class="context-item" onclick="execContextMenuAction('alignCenter')">Align Center</div>
+                    <div class="context-item text-red-500" onclick="execContextMenuAction('deleteImage')">Delete Image</div>
+                `;
+            } else {
+                contextMenu.innerHTML = `
+                    <div class="context-item font-semibold border-b border-gray-200 dark:border-gray-600 mb-1" style="cursor:default">Text Options</div>
+                    <div class="context-item" onclick="execContextMenuAction('bold')"><b>Bold</b></div>
+                    <div class="context-item" onclick="execContextMenuAction('italic')"><i>Italic</i></div>
+                    <div class="context-item" onclick="execContextMenuAction('strike')"><strike>Strikethrough</strike></div>
+                `;
             }
-            return null;
+            contextMenu.classList.remove('hidden');
         }
 
-        requestAnimationFrame(() => injectAll());
-        new MutationObserver(() => injectAll()).observe(document.querySelector('.toastui-editor-toolbar'), { childList: true, subtree: true });
-
-        function toggleTheme() {
-            document.body.classList.toggle('dark-theme');
-            document.querySelector('.toastui-editor-defaultUI').classList.toggle('toastui-editor-dark');
-            document.querySelector('#theme-btn').innerHTML = document.body.classList.contains('dark-theme') ? '<i class="ph ph-sun"></i>' : '<i class="ph ph-moon"></i>';
+        function hideContextMenu() {
+            contextMenu.classList.add('hidden');
         }
 
-        function saveFile() {
-            const blob = new Blob([editor.getMarkdown()], { type: 'text/markdown' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'document.md'; a.click();
-        }
+        window.execContextMenuAction = function(action) {
+            hideContextMenu();
+            
+            if (action === 'deleteImage' && currentTarget) {
+                currentTarget.remove();
+                const event = new Event('input', { bubbles: true });
+                document.querySelector('.toastui-editor-contents').dispatchEvent(event);
+            } else if (action === 'changeImage' && currentTarget) {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            currentTarget.src = event.target.result;
+                            const ev = new Event('input', { bubbles: true });
+                            currentTarget.dispatchEvent(ev);
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                };
+                input.click();
+            } else if (action === 'alignLeft' && currentTarget) {
+                 currentTarget.style.display = 'block';
+                 currentTarget.style.margin = '0 auto 0 0';
+            } else if (action === 'alignCenter' && currentTarget) {
+                 currentTarget.style.display = 'block';
+                 currentTarget.style.margin = '0 auto';
+            } else if (['bold', 'italic', 'strike'].includes(action)) {
+                if (window.editorInstance) window.editorInstance.exec(action);
+            }
+        };
 
-        function loadFile() {
-            const input = document.createElement('input'); input.type = 'file';
-            input.onchange = e => {
-                const reader = new FileReader();
-                reader.onload = event => editor.setMarkdown(event.target.result);
-                reader.readAsText(e.target.files[0]);
-            };
-            input.click();
-        }
+        document.addEventListener('contextmenu', (e) => {
+            if (e.target.closest('.toastui-editor-contents')) {
+                e.preventDefault();
+                showContextMenu(e.pageX, e.pageY, e.target);
+            }
+        });
 
-        function savePDF() {
-            html2pdf().from(document.querySelector('.toastui-editor-contents')).save('document.pdf');
-        }
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#custom-context-menu')) {
+                hideContextMenu();
+            }
+        });
+
+        document.addEventListener('touchstart', (e) => {
+            if (e.target.closest('.toastui-editor-contents')) {
+                const touch = e.touches[0];
+                pressTimer = setTimeout(() => {
+                    showContextMenu(touch.pageX, touch.pageY, e.target);
+                }, 600);
+            }
+        });
+
+        document.addEventListener('touchend', () => {
+            if (pressTimer) clearTimeout(pressTimer);
+        });
+
+        document.addEventListener('touchmove', () => {
+            if (pressTimer) clearTimeout(pressTimer);
+            hideContextMenu();
+        });
     </script>
 </body>
 </html>
