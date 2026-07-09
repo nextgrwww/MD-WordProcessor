@@ -302,6 +302,51 @@
         const template = document.getElementById('mac-ui-template');
         wrapper.appendChild(template.querySelector('.mac-left-ui'));
         wrapper.appendChild(toolbar);
+
+        // We append custom tools to OUR wrapper, not TUI's toolbar, so Preact never deletes them.
+        const customToolsContainer = document.createElement('div');
+        customToolsContainer.className = 'flex items-center gap-1 flex-shrink-0';
+        
+        const createBtn = (label, icon, onClick) => {
+            const btn = document.createElement('button');
+            btn.className = 'toastui-editor-toolbar-icons flex items-center justify-center';
+            btn.style.cssText = 'width: 32px; height: 32px; margin: 0 2px; border-radius: 6px; background: transparent; border: none; cursor: pointer; color: var(--mac-text); transition: background 0.2s, transform 0.1s;';
+            btn.setAttribute('aria-label', label);
+            btn.title = label;
+            btn.innerHTML = `<i class="ph ${icon}" style="font-size: 18px; pointer-events: none;"></i>`;
+            btn.addEventListener('click', onClick);
+            // macOS style hover states
+            btn.onmouseover = () => btn.style.background = 'rgba(128, 128, 128, 0.15)';
+            btn.onmouseout = () => btn.style.background = 'transparent';
+            btn.onmousedown = () => btn.style.transform = 'scale(0.95)';
+            btn.onmouseup = () => btn.style.transform = 'scale(1)';
+            return btn;
+        };
+
+        const editGroup = document.createElement('div');
+        editGroup.className = 'flex items-center border-l border-gray-300 dark:border-gray-600 pl-1 ml-1';
+        editGroup.appendChild(createBtn('Undo', 'ph-arrow-u-up-left', () => editor.exec('undo')));
+        editGroup.appendChild(createBtn('Redo', 'ph-arrow-u-up-right', () => editor.exec('redo')));
+        editGroup.appendChild(createBtn('Cut', 'ph-scissors', () => document.execCommand('cut')));
+        editGroup.appendChild(createBtn('Copy', 'ph-copy', () => document.execCommand('copy')));
+        editGroup.appendChild(createBtn('Paste', 'ph-clipboard', async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                editor.insertText(text);
+            } catch (e) {
+                document.execCommand('paste');
+            }
+        }));
+
+        const moveGroup = document.createElement('div');
+        moveGroup.className = 'flex items-center border-l border-gray-300 dark:border-gray-600 pl-1 ml-1';
+        moveGroup.appendChild(createBtn('Move Up', 'ph-arrow-up', moveUp));
+        moveGroup.appendChild(createBtn('Move Down', 'ph-arrow-down', moveDown));
+
+        customToolsContainer.appendChild(editGroup);
+        customToolsContainer.appendChild(moveGroup);
+        wrapper.appendChild(customToolsContainer);
+        
         wrapper.appendChild(template.querySelector('.mac-toolbar-actions'));
 
         const phosphorIcons = {
@@ -321,34 +366,6 @@
                     btn.title = label;
                 }
             });
-            
-            const toolbar = document.querySelector('.toastui-editor-toolbar');
-            if (toolbar && !document.querySelector('.custom-edit-group')) {
-                const createBtn = (label, icon, onClick) => {
-                    const btn = document.createElement('button');
-                    btn.className = 'toastui-editor-toolbar-icons custom-btn';
-                    btn.setAttribute('aria-label', label);
-                    btn.title = label;
-                    btn.innerHTML = `<i class="ph ${icon}"></i>`;
-                    btn.addEventListener('click', onClick);
-                    return btn;
-                };
-                
-                const editGroup = document.createElement('div');
-                editGroup.className = 'toastui-editor-toolbar-group custom-edit-group';
-                editGroup.appendChild(createBtn('Undo', 'ph-arrow-u-up-left', () => document.execCommand('undo')));
-                editGroup.appendChild(createBtn('Redo', 'ph-arrow-u-up-right', () => document.execCommand('redo')));
-                editGroup.appendChild(createBtn('Cut', 'ph-scissors', () => document.execCommand('cut')));
-                editGroup.appendChild(createBtn('Copy', 'ph-copy', () => document.execCommand('copy')));
-                
-                const moveGroup = document.createElement('div');
-                moveGroup.className = 'toastui-editor-toolbar-group custom-move-group';
-                moveGroup.appendChild(createBtn('Move Up', 'ph-arrow-up', moveUp));
-                moveGroup.appendChild(createBtn('Move Down', 'ph-arrow-down', moveDown));
-
-                toolbar.appendChild(editGroup);
-                toolbar.appendChild(moveGroup);
-            }
         }
 
         function moveUp() {
